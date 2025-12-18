@@ -127,6 +127,7 @@ const Navbar = () => {
 const Card = ({ i, title, description, price, img, color, rotation, progress, range, targetScale, floatingDelay }: any) => {
   const container = useRef(null);
   const { scrollYProgress } = useScroll({ target: container, offset: ['start end', 'start start'] });
+  const [isHovered, setIsHovered] = useState(false);
   
   const scale = useTransform(progress, range, [1, targetScale]);
   const imageY = useTransform(scrollYProgress, [0, 1], ["-10%", "10%"]);
@@ -168,28 +169,46 @@ const Card = ({ i, title, description, price, img, color, rotation, progress, ra
         }} 
         className="relative flex flex-col md:flex-row h-[65vh] md:h-[550px] w-full max-w-6xl rounded-[3rem] p-6 md:p-12 origin-top shadow-2xl border border-white/80 overflow-hidden"
       >
-        {/* Imagen con profundidad 3D */}
-        <div className="w-full md:w-1/2 h-1/2 md:h-full rounded-[2rem] overflow-hidden relative shadow-inner bg-white" style={{ transform: "translateZ(40px)" }}>
+        {/* Imagen con profundidad 3D y efecto zoom */}
+        <motion.div 
+          className="w-full md:w-1/2 h-1/2 md:h-full rounded-[2rem] overflow-hidden relative shadow-inner bg-white"
+          style={{ transform: "translateZ(40px)" }}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
           <motion.div 
             style={{ y: imageY, scale: 1.1 }} 
             animate={{
-              scale: [1.1, 1.15, 1.1],
+              scale: isHovered ? 1.25 : [1.1, 1.15, 1.1],
             }}
             transition={{
               scale: {
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: floatingDelay || i * 0.4,
+                duration: isHovered ? 0.7 : 3,
+                ease: isHovered ? "easeOut" : "easeInOut",
+                delay: isHovered ? 0 : floatingDelay || i * 0.4,
               }
             }}
             className="w-full h-[120%] -mt-[10%]"
           >
-            <img src={img} alt={title} className="w-full h-full object-cover" />
+            <img 
+              src={img} 
+              alt={title} 
+              className="w-full h-full object-cover"
+            />
           </motion.div>
+          
+          {/* Efecto de lupa overlay */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isHovered ? 1 : 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none"
+          />
+          
           <motion.div 
             animate={{
               y: [0, -3, 0],
+              scale: isHovered ? 1.1 : 1,
             }}
             transition={{
               y: {
@@ -197,48 +216,39 @@ const Card = ({ i, title, description, price, img, color, rotation, progress, ra
                 repeat: Infinity,
                 ease: "easeInOut",
                 delay: floatingDelay || i * 0.4,
+              },
+              scale: {
+                duration: 0.3,
               }
             }}
-            className="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-5 py-2 rounded-full font-display font-bold text-xl text-rose-600 shadow-sm"
+            className="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-5 py-2 rounded-full font-display font-bold text-xl text-rose-600 shadow-sm z-10"
           >
             {price}
           </motion.div>
-        </div>
+          
+          {/* Icono de lupa cuando se hace hover */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ 
+              opacity: isHovered ? 1 : 0,
+              scale: isHovered ? 1 : 0.8,
+              y: isHovered ? 0 : 10
+            }}
+            transition={{ duration: 0.3 }}
+            className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md p-3 rounded-full shadow-lg z-10"
+          >
+            <ArrowUpRight size={20} className="text-rose-600" />
+          </motion.div>
+        </motion.div>
 
         {/* Info con profundidad 3D */}
         <div className="w-full md:w-1/2 flex flex-col justify-center p-4 md:pl-16 space-y-6 md:space-y-8 text-rose-950" style={{ transform: "translateZ(70px)" }}>
-          <motion.h2 
-            animate={{
-              y: [0, -5, 0],
-            }}
-            transition={{
-              y: {
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: floatingDelay || i * 0.4,
-              }
-            }}
-            className="text-4xl md:text-6xl font-display font-bold leading-[0.9]"
-          >
+          <h2 className="text-4xl md:text-6xl font-display font-bold leading-[0.9]">
             {title}
-          </motion.h2>
-          <motion.p 
-            animate={{
-              y: [0, -3, 0],
-            }}
-            transition={{
-              y: {
-                duration: 3.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: (floatingDelay || i * 0.4) + 0.1,
-              }
-            }}
-            className="text-lg opacity-70 font-medium leading-relaxed"
-          >
+          </h2>
+          <p className="text-lg opacity-70 font-medium leading-relaxed">
             {description}
-          </motion.p>
+          </p>
           <div className="flex gap-4">
             <motion.button 
               animate={{
@@ -332,6 +342,7 @@ const App = () => {
   const { scrollYProgress } = useScroll({ target: container, offset: ['start start', 'end end'] });
   const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [hoveredImageIndex, setHoveredImageIndex] = useState<number | null>(null);
 
   // Auto-slider de historia
   useEffect(() => {
@@ -362,98 +373,22 @@ const App = () => {
          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-gradient-to-b from-pink-100/50 to-transparent rounded-full blur-[100px] -z-10"></div>
          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="text-center z-10 max-w-5xl mx-auto">
             <div className="flex justify-center mb-8">
-              <motion.span 
-                animate={{
-                  y: [0, -5, 0],
-                }}
-                transition={{
-                  y: {
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }
-                }}
-                className="glass-panel px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest text-pink-600 flex items-center gap-2 shadow-sm"
-              >
+              <span className="glass-panel px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest text-pink-600 flex items-center gap-2 shadow-sm">
                 <Star size={12} className="fill-pink-600"/> Repostería de Autor
-              </motion.span>
+              </span>
             </div>
-            <motion.h1 
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ 
-                opacity: 1,
-                y: [0, -10, 0],
-              }}
-              transition={{
-                opacity: { duration: 0.8 },
-                y: {
-                  duration: 6,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }
-              }}
-              className="text-[15vw] md:text-[11vw] leading-[0.85] font-black font-display tracking-tighter text-rose-950 mb-6 select-none uppercase"
-            >
+            <h1 className="text-[15vw] md:text-[11vw] leading-[0.85] font-black font-display tracking-tighter text-rose-950 mb-6 select-none uppercase">
               ARTE <br/> <span className="text-gradient">DULCE</span>
-            </motion.h1>
-            <motion.p 
-              animate={{
-                y: [0, -3, 0],
-              }}
-              transition={{
-                y: {
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }
-              }}
-              className="text-xl md:text-2xl text-rose-900/60 font-medium max-w-xl mx-auto mb-12 italic"
-            >
+            </h1>
+            <p className="text-xl md:text-2xl text-rose-900/60 font-medium max-w-xl mx-auto mb-12 italic">
               Donde la arquitectura se encuentra con el azúcar.
-            </motion.p>
+            </p>
             <div className="flex justify-center">
-              <motion.a 
-                animate={{
-                  y: [0, -8, 0],
-                }}
-                transition={{
-                  y: {
-                    duration: 3.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }
-                }}
-                href="#menu" 
-                className="bg-rose-950 text-white px-10 py-4 rounded-full font-bold text-lg hover:bg-pink-600 transition-all shadow-xl flex items-center gap-2 group"
-              >
+              <a href="#menu" className="bg-rose-950 text-white px-10 py-4 rounded-full font-bold text-lg hover:bg-pink-600 transition-all shadow-xl flex items-center gap-2 group">
                 Explorar Menú <ArrowUpRight className="group-hover:rotate-45 transition-transform" />
-              </motion.a>
+              </a>
             </div>
          </motion.div>
-         
-         {/* Elementos flotantes decorativos en el hero */}
-         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-           {[...Array(8)].map((_, idx) => (
-             <motion.div
-               key={idx}
-               className="absolute w-2 h-2 rounded-full bg-pink-300/20"
-               initial={{
-                 x: Math.random() * 100 + "%",
-                 y: Math.random() * 100 + "%",
-               }}
-               animate={{
-                 y: [null, `-${Math.random() * 100 + 50}px`],
-                 x: [null, `calc(${Math.random() * 40 - 20}px + ${Math.random() * 100}%)`],
-               }}
-               transition={{
-                 duration: Math.random() * 5 + 3,
-                 repeat: Infinity,
-                 delay: idx * 0.7,
-                 ease: "easeInOut",
-               }}
-             />
-           ))}
-         </div>
       </header>
 
       {/* --- MARQUEE ELEGANTE --- */}
@@ -509,118 +444,43 @@ const App = () => {
                   opacity: 1, 
                   scale: 1, 
                   x: 0,
-                  y: [0, -10, 0],
                 }} 
                 exit={{ opacity: 0, scale: 0.9, x: 20 }} 
                 transition={{ 
                   duration: 0.8,
-                  y: {
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }
                 }} 
                 className="absolute inset-0"
               >
-                <motion.div 
-                  animate={{
-                    rotate: [3, 0, 3],
-                  }}
-                  transition={{
-                    rotate: {
-                      duration: 8,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }
-                  }}
-                  className="absolute -inset-4 border border-rose-900/10 rounded-[2.5rem] rotate-3 transition-transform duration-700"
-                ></motion.div>
+                <div className="absolute -inset-4 border border-rose-900/10 rounded-[2.5rem] rotate-3 transition-transform group-hover:rotate-0 duration-700"></div>
                 <div className="h-full rounded-[2.5rem] overflow-hidden shadow-2xl relative z-10">
-                  <img src={historySlides[currentSlide].img} alt="Historia" className="w-full h-full object-cover" />
+                  <img src={historySlides[currentSlide].img} alt="Historia" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 </div>
               </motion.div>
             </AnimatePresence>
             <div className="absolute -bottom-10 left-0 flex gap-2">
               {historySlides.map((_, idx) => ( 
-                <motion.div 
+                <div 
                   key={idx} 
-                  animate={{
-                    scale: idx === currentSlide ? [1, 1.2, 1] : 1,
-                  }}
-                  transition={{
-                    scale: {
-                      duration: 2,
-                      repeat: Infinity,
-                    }
-                  }}
                   className={`h-1 transition-all duration-500 rounded-full ${idx === currentSlide ? 'w-12 bg-pink-500' : 'w-4 bg-rose-200'}`} 
                 /> 
               ))}
             </div>
           </div>
           
-          {/* Sección de texto CORREGIDA - Sin AnimatePresence aquí */}
+          {/* Sección de texto SIN efectos de flotación */}
           <div className="space-y-8 relative">
-            <motion.div 
-              key={`text-${currentSlide}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ 
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{ 
-                opacity: { duration: 0.5 },
-                y: { duration: 0.5 }
-              }}
-              className="relative"
-            >
-              <motion.span 
-                animate={{
-                  y: [0, -3, 0],
-                }}
-                transition={{
-                  y: {
-                    duration: 2.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }
-                }}
-                className="text-pink-600 font-bold tracking-widest uppercase text-sm bg-pink-100 px-3 py-1 rounded-full w-fit block mb-4"
-              >
+            <div key={`text-${currentSlide}`} className="relative">
+              <span className="text-pink-600 font-bold tracking-widest uppercase text-sm bg-pink-100 px-3 py-1 rounded-full w-fit block mb-4">
                 {historySlides[currentSlide].year}
-              </motion.span>
-              <motion.h2 
-                animate={{
-                  y: [0, -8, 0],
-                }}
-                transition={{
-                  y: {
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }
-                }}
-                className="text-5xl md:text-7xl font-display font-bold text-rose-950 leading-tight mb-6 uppercase"
-              >
+              </span>
+              <h2 className="text-5xl md:text-7xl font-display font-bold text-rose-950 leading-tight mb-6 uppercase">
                 {historySlides[currentSlide].title.split(' ')[0]} <br/> 
                 <span className="text-gradient italic">{historySlides[currentSlide].title.split(' ').slice(1).join(' ')}</span>
-              </motion.h2>
-              <motion.p 
-                animate={{
-                  y: [0, -3, 0],
-                }}
-                transition={{
-                  y: {
-                    duration: 3.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }
-                }}
-                className="text-xl text-rose-800/70 leading-relaxed max-w-md italic"
-              >
+              </h2>
+              <p className="text-xl text-rose-800/70 leading-relaxed max-w-md italic">
                 {historySlides[currentSlide].description}
-              </motion.p>
-            </motion.div>
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -628,36 +488,8 @@ const App = () => {
       {/* --- SECCIÓN MENU (STACKING CARDS) --- */}
       <section id="menu" className="py-20 relative">
         <div className="text-center mb-4 px-4">
-          <motion.h2 
-            animate={{
-              y: [0, -5, 0],
-            }}
-            transition={{
-              y: {
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }
-            }}
-            className="text-5xl md:text-7xl font-display font-bold text-rose-950 mb-2 uppercase"
-          >
-            Obras Maestras
-          </motion.h2>
-          <motion.p 
-            animate={{
-              y: [0, -3, 0],
-            }}
-            transition={{
-              y: {
-                duration: 3.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }
-            }}
-            className="text-xl text-rose-800/60 italic font-medium tracking-wide"
-          >
-            Desliza para descubrir nuestra colección
-          </motion.p>
+          <h2 className="text-5xl md:text-7xl font-display font-bold text-rose-950 mb-2 uppercase">Obras Maestras</h2>
+          <p className="text-xl text-rose-800/60 italic font-medium tracking-wide">Desliza para descubrir nuestra colección</p>
         </div>
         {/* Contenedor compacto */}
         <div ref={container} className="relative pb-64 snap-y snap-mandatory h-full -mt-16">
@@ -672,107 +504,53 @@ const App = () => {
       <section className="py-24 bg-white/50 backdrop-blur-sm border-y border-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
-             <motion.h3 
-               animate={{
-                 y: [0, -4, 0],
-               }}
-               transition={{
-                 y: {
-                   duration: 3,
-                   repeat: Infinity,
-                   ease: "easeInOut",
-                 }
-               }}
-               className="text-4xl font-display font-bold text-rose-950 uppercase"
-             >
-               Favoritos Diarios
-             </motion.h3>
-             <motion.a 
-               animate={{
-                 y: [0, -3, 0],
-               }}
-               transition={{
-                 y: {
-                   duration: 2.5,
-                   repeat: Infinity,
-                   ease: "easeInOut",
-                 }
-               }}
-               href="#" 
-               className="text-pink-600 font-bold border-b-2 border-pink-200 hover:border-pink-600 transition-colors pb-1"
-             >
-               Ver Menú Completo
-             </motion.a>
+             <h3 className="text-4xl font-display font-bold text-rose-950 uppercase">Favoritos Diarios</h3>
+             <a href="#" className="text-pink-600 font-bold border-b-2 border-pink-200 hover:border-pink-600 transition-colors pb-1">Ver Menú Completo</a>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
              {[
-               {name: "Croissant Almendra", price: "$45", img: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&q=80&w=400", delay: 0},
-               {name: "Latte de Rosas", price: "$55", img: "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=400", delay: 0.1},
-               {name: "Tartaleta Frutal", price: "$60", img: "https://imgs.search.brave.com/D6G2Jd6v7uOnh62HVGGg0pEgF3pw8v1-FZIbXoVzXIs/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly93d3cu/ZGVtb3NsYXZ1ZWx0/YWFsZGlhLmNvbS9z/aXRlcy9kZWZhdWx0/L2ZpbGVzL3RhcnRh/LWZydXRhbC5qcGc", delay: 0.2},
-               {name: "Cheesecake NY", price: "$75", img: "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&q=80&w=400", delay: 0.3},
+               {name: "Croissant Almendra", price: "$45", img: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&q=80&w=400"},
+               {name: "Latte de Rosas", price: "$55", img: "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=400"},
+               {name: "Tartaleta Frutal", price: "$60", img: "https://imgs.search.brave.com/D6G2Jd6v7uOnh62HVGGg0pEgF3pw8v1-FZIbXoVzXIs/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly93d3cu/ZGVtb3NsYXZ1ZWx0/YWFsZGlhLmNvbS9z/aXRlcy9kZWZhdWx0/L2ZpbGVzL3RhcnRh/LWZydXRhbC5qcGc"},
+               {name: "Cheesecake NY", price: "$75", img: "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&q=80&w=400"},
              ].map((item, idx) => (
-               <motion.div 
+               <div 
                  key={idx} 
-                 whileHover={{ y: -10 }} 
-                 animate={{
-                   y: [0, -8, 0],
-                 }}
-                 transition={{
-                   y: {
-                     duration: 3 + idx * 0.5,
-                     repeat: Infinity,
-                     ease: "easeInOut",
-                     delay: item.delay,
-                   }
-                 }}
-                 className="group cursor-pointer"
+                 className="group cursor-pointer relative"
+                 onMouseEnter={() => setHoveredImageIndex(idx)}
+                 onMouseLeave={() => setHoveredImageIndex(null)}
                >
                  <div className="aspect-square rounded-[1.5rem] overflow-hidden mb-4 bg-gray-100 relative shadow-sm">
-                   <img src={item.img} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                   <button className="absolute bottom-3 right-3 bg-white text-rose-950 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg transform translate-y-2 group-hover:translate-y-0">
+                   <motion.img 
+                     src={item.img} 
+                     alt={item.name} 
+                     className="w-full h-full object-cover"
+                     animate={{
+                       scale: hoveredImageIndex === idx ? 1.15 : 1,
+                     }}
+                     transition={{
+                       duration: 0.7,
+                       ease: "easeOut"
+                     }}
+                   />
+                   
+                   {/* Overlay de zoom */}
+                   <motion.div
+                     initial={{ opacity: 0 }}
+                     animate={{ opacity: hoveredImageIndex === idx ? 1 : 0 }}
+                     transition={{ duration: 0.3 }}
+                     className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none"
+                   />
+                   
+                   <button className="absolute bottom-3 right-3 bg-white text-rose-950 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg transform translate-y-2 group-hover:translate-y-0 z-10">
                      <ArrowUpRight size={16} />
                    </button>
                  </div>
                  <div className="flex justify-between items-start">
-                   <motion.p 
-                     animate={{
-                       y: [0, -2, 0],
-                     }}
-                     transition={{
-                       y: {
-                         duration: 2.8,
-                         repeat: Infinity,
-                         ease: "easeInOut",
-                         delay: item.delay,
-                       }
-                     }}
-                     className="font-bold text-rose-950 text-lg leading-tight uppercase"
-                   >
-                     {item.name}
-                   </motion.p>
-                   <motion.span 
-                     animate={{
-                       scale: [1, 1.05, 1],
-                       y: [0, -2, 0],
-                     }}
-                     transition={{
-                       scale: {
-                         duration: 2,
-                         repeat: Infinity,
-                         ease: "easeInOut",
-                       },
-                       y: {
-                         duration: 2.5,
-                         repeat: Infinity,
-                         ease: "easeInOut",
-                       }
-                     }}
-                     className="text-sm bg-rose-100 px-2 py-1 rounded-lg text-rose-700 font-bold"
-                   >
-                     {item.price}
-                   </motion.span>
+                   <p className="font-bold text-rose-950 text-lg leading-tight uppercase">{item.name}</p>
+                   <span className="text-sm bg-rose-100 px-2 py-1 rounded-lg text-rose-700 font-bold">{item.price}</span>
                  </div>
-               </motion.div>
+               </div>
              ))}
           </div>
         </div>
@@ -780,52 +558,12 @@ const App = () => {
 
       {/* --- UBICACIÓN Y FORMULARIO --- */}
       <section id="ubicacion" className="py-24 px-6 max-w-7xl mx-auto scroll-mt-24">
-         <motion.div 
-           animate={{
-             y: [0, -5, 0],
-           }}
-           transition={{
-             y: {
-               duration: 4,
-               repeat: Infinity,
-               ease: "easeInOut",
-             }
-           }}
-           className="grid lg:grid-cols-2 gap-8 md:gap-16 bg-white p-12 rounded-[3rem] shadow-xl border border-rose-100 relative overflow-hidden"
-         >
+         <div className="grid lg:grid-cols-2 gap-8 md:gap-16 bg-white p-12 rounded-[3rem] shadow-xl border border-rose-100 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-96 h-96 bg-pink-100 rounded-full blur-[100px] opacity-50 pointer-events-none"></div>
            <div className="space-y-8 z-10 text-rose-950">
-             <motion.h2 
-               animate={{
-                 y: [0, -3, 0],
-               }}
-               transition={{
-                 y: {
-                   duration: 3,
-                   repeat: Infinity,
-                   ease: "easeInOut",
-                 }
-               }}
-               className="text-5xl font-display font-bold uppercase tracking-tight leading-none"
-             >
-               Visítanos <br/>
-               <span className="text-pink-500 italic lowercase font-medium">tu rincón favorito</span>
-             </motion.h2>
+             <h2 className="text-5xl font-display font-bold uppercase tracking-tight leading-none">Visítanos <br/><span className="text-pink-500 italic lowercase font-medium">tu rincón favorito</span></h2>
              <div className="flex flex-col gap-6">
-                <motion.div 
-                  animate={{
-                    y: [0, -4, 0],
-                  }}
-                  transition={{
-                    y: {
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: 0.1,
-                    }
-                  }}
-                  className="flex items-center gap-4 group"
-                >
+                <div className="flex items-center gap-4 group">
                   <div className="bg-rose-50 p-4 rounded-2xl group-hover:bg-pink-100 transition-colors">
                     <MapPin size={24} className="text-pink-600"/>
                   </div>
@@ -833,21 +571,8 @@ const App = () => {
                     <p className="font-bold uppercase text-sm tracking-widest mb-1">Dirección</p>
                     <p className="text-rose-800/70 font-medium">Av. Paseo de la Reforma 222, CDMX</p>
                   </div>
-                </motion.div>
-                <motion.div 
-                  animate={{
-                    y: [0, -4, 0],
-                  }}
-                  transition={{
-                    y: {
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: 0.2,
-                    }
-                  }}
-                  className="flex items-center gap-4 group"
-                >
+                </div>
+                <div className="flex items-center gap-4 group">
                   <div className="bg-rose-50 p-4 rounded-2xl group-hover:bg-pink-100 transition-colors">
                     <Clock size={24} className="text-pink-600"/>
                   </div>
@@ -855,54 +580,23 @@ const App = () => {
                     <p className="font-bold uppercase text-sm tracking-widest mb-1">Horario</p>
                     <p className="text-rose-800/70 font-medium">Lun - Dom: 9:00 AM - 9:00 PM</p>
                   </div>
-                </motion.div>
+                </div>
              </div>
-             <motion.div
-               animate={{
-                 y: [0, -8, 0],
-               }}
-               transition={{
-                 y: {
-                   duration: 3.5,
-                   repeat: Infinity,
-                   ease: "easeInOut",
-                 }
-               }}
-             >
+             <div className="group">
                <MapCard />
-             </motion.div>
+             </div>
            </div>
            
            <div className="bg-rose-50/80 backdrop-blur-sm p-12 rounded-[2.5rem] border border-rose-100 z-10">
-             <motion.h3 
-               animate={{
-                 y: [0, -5, 0],
-               }}
-               transition={{
-                 y: {
-                   duration: 3,
-                   repeat: Infinity,
-                   ease: "easeInOut",
-                 }
-               }}
-               className="text-3xl font-display font-bold mb-6 uppercase"
-             >
-               Pedidos Especiales
-             </motion.h3>
+             <h3 className="text-3xl font-display font-bold mb-6 uppercase">Pedidos Especiales</h3>
              <AnimatePresence mode="wait">
                {formStatus === 'success' ? (
                  <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ 
                    opacity: 1, 
                    scale: 1,
-                   y: [0, -3, 0],
                  }} transition={{ 
                    opacity: { duration: 0.5 },
                    scale: { duration: 0.5 },
-                   y: {
-                     duration: 2,
-                     repeat: Infinity,
-                     ease: "easeInOut",
-                   }
                  }} className="h-full flex flex-col items-center justify-center py-12 text-center text-green-600">
                    <CheckCircle2 size={64} className="mb-4" />
                    <h4 className="text-2xl font-bold uppercase">¡Mensaje Recibido!</h4>
@@ -917,177 +611,44 @@ const App = () => {
                    className="space-y-4 text-rose-950"
                  >
                    <div className="grid grid-cols-2 gap-4">
-                     <motion.div
-                       animate={{
-                         y: [0, -2, 0],
-                       }}
-                       transition={{
-                         y: {
-                           duration: 2.5,
-                           repeat: Infinity,
-                           ease: "easeInOut",
-                           delay: 0.1,
-                         }
-                       }}
-                     >
+                     <div>
                        <label className="text-xs font-bold uppercase ml-1 tracking-widest">Nombre</label>
                        <input type="text" required className="input-field" />
-                     </motion.div>
-                     <motion.div
-                       animate={{
-                         y: [0, -2, 0],
-                       }}
-                       transition={{
-                         y: {
-                           duration: 2.5,
-                           repeat: Infinity,
-                           ease: "easeInOut",
-                           delay: 0.2,
-                         }
-                       }}
-                     >
+                     </div>
+                     <div>
                        <label className="text-xs font-bold uppercase ml-1 tracking-widest">Teléfono</label>
                        <input type="tel" required className="input-field" />
-                     </motion.div>
+                     </div>
                    </div>
-                   <motion.div
-                     animate={{
-                       y: [0, -2, 0],
-                     }}
-                     transition={{
-                       y: {
-                         duration: 2.5,
-                         repeat: Infinity,
-                         ease: "easeInOut",
-                         delay: 0.3,
-                       }
-                     }}
-                   >
+                   <div>
                      <label className="text-xs font-bold uppercase ml-1 tracking-widest">Email</label>
                      <input type="email" required className="input-field" />
-                   </motion.div>
-                   <motion.div
-                     animate={{
-                       y: [0, -2, 0],
-                     }}
-                     transition={{
-                       y: {
-                         duration: 2.5,
-                         repeat: Infinity,
-                         ease: "easeInOut",
-                         delay: 0.4,
-                       }
-                     }}
-                   >
+                   </div>
+                   <div>
                      <label className="text-xs font-bold uppercase ml-1 tracking-widest">Mensaje</label>
                      <textarea rows={4} required className="input-field resize-none"></textarea>
-                   </motion.div>
-                   <motion.button 
-                     animate={{
-                       y: [0, -5, 0],
-                     }}
-                     transition={{
-                       y: {
-                         duration: 2.8,
-                         repeat: Infinity,
-                         ease: "easeInOut",
-                       }
-                     }}
-                     type="submit" 
-                     disabled={formStatus === 'submitting'} 
-                     className="w-full bg-rose-950 text-white py-4 rounded-xl font-bold hover:bg-pink-600 transition-all shadow-xl mt-4 uppercase tracking-widest"
-                   >
+                   </div>
+                   <button type="submit" disabled={formStatus === 'submitting'} className="w-full bg-rose-950 text-white py-4 rounded-xl font-bold hover:bg-pink-600 transition-all shadow-xl mt-4 uppercase tracking-widest">
                      {formStatus === 'submitting' ? 'Enviando...' : 'Enviar Solicitud'}
-                   </motion.button>
+                   </button>
                  </motion.form>
                )}
              </AnimatePresence>
            </div>
-         </motion.div>
+         </div>
       </section>
 
       <footer className="bg-rose-950 text-rose-100/80 py-16 border-t border-rose-900/50">
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 text-center md:text-left">
            <div>
-             <motion.span 
-               animate={{
-                 y: [0, -3, 0],
-               }}
-               transition={{
-                 y: {
-                   duration: 3,
-                   repeat: Infinity,
-                   ease: "easeInOut",
-                 }
-               }}
-               className="font-display font-bold text-3xl text-white uppercase tracking-tighter"
-             >
-               DULCE<span className="text-pink-500">.</span>
-             </motion.span>
-             <motion.p 
-               animate={{
-                 y: [0, -2, 0],
-               }}
-               transition={{
-                 y: {
-                   duration: 3.5,
-                   repeat: Infinity,
-                   ease: "easeInOut",
-                   delay: 0.1,
-                 }
-               }}
-               className="mt-4 max-w-sm text-lg mx-auto md:mx-0 font-medium italic"
-             >
-               Haciendo del mundo un lugar más dulce, un bocado artesanal a la vez.
-             </motion.p>
+             <span className="font-display font-bold text-3xl text-white uppercase tracking-tighter">DULCE<span className="text-pink-500">.</span></span>
+             <p className="mt-4 max-w-sm text-lg mx-auto md:mx-0 font-medium italic">Haciendo del mundo un lugar más dulce, un bocado artesanal a la vez.</p>
            </div>
            <div className="flex justify-center md:justify-end gap-6 items-center">
-             <motion.div
-               animate={{
-                 y: [0, -5, 0],
-               }}
-               transition={{
-                 y: {
-                   duration: 2.5,
-                   repeat: Infinity,
-                   ease: "easeInOut",
-                   delay: 0.1,
-                 }
-               }}
-             >
-               <Instagram size={28} className="cursor-pointer hover:text-pink-500 transition-all hover:scale-110" />
-             </motion.div>
-             <motion.div
-               animate={{
-                 y: [0, -5, 0],
-               }}
-               transition={{
-                 y: {
-                   duration: 2.5,
-                   repeat: Infinity,
-                   ease: "easeInOut",
-                   delay: 0.2,
-                 }
-               }}
-             >
-               <Facebook size={28} className="cursor-pointer hover:text-pink-500 transition-all hover:scale-110" />
-             </motion.div>
+             <Instagram size={28} className="cursor-pointer hover:text-pink-500 transition-all hover:scale-110" />
+             <Facebook size={28} className="cursor-pointer hover:text-pink-500 transition-all hover:scale-110" />
              <div className="bg-white/10 h-10 w-px mx-2"></div>
-             <motion.p 
-               animate={{
-                 y: [0, -3, 0],
-               }}
-               transition={{
-                 y: {
-                   duration: 3,
-                   repeat: Infinity,
-                   ease: "easeInOut",
-                 }
-               }}
-               className="text-xs font-bold uppercase tracking-[0.2em]"
-             >
-               Est. 2015
-             </motion.p>
+             <p className="text-xs font-bold uppercase tracking-[0.2em]">Est. 2015</p>
            </div>
         </div>
       </footer>
